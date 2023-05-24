@@ -48,6 +48,7 @@ class SourceFacebookMarketing(AbstractSource):
         config = ConnectorConfig.parse_obj(config)
         config.start_date = pendulum.instance(config.start_date)
         config.end_date = pendulum.instance(config.end_date)
+        config.account_ids = config.account_ids.split(",")
         return config
 
     def check_connection(self, logger: logging.Logger, config: Mapping[str, Any]) -> Tuple[bool, Optional[Any]]:
@@ -65,17 +66,20 @@ class SourceFacebookMarketing(AbstractSource):
             if config.end_date < config.start_date:
                 return False, "end_date must be equal or after start_date."
 
-            api = API(account_id=config.account_id, access_token=config.access_token)
-            logger.info(f"Select account {api.account}")
+            apis = [API(account_id=account, access_token=config.access_token) for account in config.account_ids]
+            logger.info(f"Select accounts {str([api.account for api in apis])}") # this is sometimes shown in airbyte and sometimes not, go figure
         except (requests.exceptions.RequestException, ValidationError, FacebookAPIException) as e:
             return False, e
 
         # make sure that we have valid combination of "action_breakdowns" and "breakdowns" parameters
-        for stream in self.get_custom_insights_streams(api, config):
-            try:
-                stream.check_breakdowns()
-            except facebook_business.exceptions.FacebookRequestError as e:
-                return False, e._api_error_message
+        # Uncomment this when needed
+        # for api in apis:
+        #     for stream in self.get_custom_insights_streams(api, config):
+        #         try:
+        #             stream.check_breakdowns()
+        #         except facebook_business.exceptions.FacebookRequestError as e:
+        #             print(api)
+        #             return False, e._api_error_message
         return True, None
 
     def streams(self, config: Mapping[str, Any]) -> List[Type[Stream]]:
@@ -88,13 +92,14 @@ class SourceFacebookMarketing(AbstractSource):
         config.start_date = validate_start_date(config.start_date)
         config.end_date = validate_end_date(config.start_date, config.end_date)
 
-        api = API(account_id=config.account_id, access_token=config.access_token)
+        apis = [API(account_id=account, access_token=config.access_token) for account in config.account_ids]
+        api = apis[0]  # this is to make work streams that are not yet migrated to use several apis instead of just one
 
         insights_args = dict(
             api=api, start_date=config.start_date, end_date=config.end_date, insights_lookback_window=config.insights_lookback_window
         )
         streams = [
-            AdAccount(api=api),
+            AdAccount(api=api, apis=apis),
             AdSets(
                 api=api,
                 start_date=config.start_date,

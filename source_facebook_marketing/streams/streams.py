@@ -167,12 +167,13 @@ class AdAccount(FBMarketingStream):
     def get_task_permissions(self) -> Set[str]:
         """https://developers.facebook.com/docs/marketing-api/reference/ad-account/assigned_users/"""
         res = set()
-        me = User(fbid="me", api=self._api.api)
-        for business_user in me.get_business_users():
-            assigned_users = self._api.account.get_assigned_users(params={"business": business_user["business"].get_id()})
-            for assigned_user in assigned_users:
-                if business_user.get_id() == assigned_user.get_id():
-                    res.update(set(assigned_user["tasks"]))
+        for api in self._apis:
+            me = User(fbid="me", api=api.api)
+            for business_user in me.get_business_users():
+                assigned_users = api.account.get_assigned_users(params={"business": business_user["business"].get_id()})
+                for assigned_user in assigned_users:
+                    if business_user.get_id() == assigned_user.get_id():
+                        res.update(set(assigned_user["tasks"]))
         return res
 
     @cached_property
@@ -189,7 +190,7 @@ class AdAccount(FBMarketingStream):
 
     def list_objects(self, params: Mapping[str, Any]) -> Iterable:
         """noop in case of AdAccount"""
-        return [FBAdAccount(self._api.account.get_id())]
+        return [FBAdAccount(api.account.get_id()) for api in self._apis]
 
 
 class Images(FBMarketingReversedIncrementalStream):

@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field, PositiveInt
 
 logger = logging.getLogger("airbyte")
 
-
 ValidFields = Enum("ValidEnums", AdsInsights.Field.__dict__)
 ValidBreakdowns = Enum("ValidBreakdowns", AdsInsights.Breakdowns.__dict__)
 ValidActionBreakdowns = Enum("ValidActionBreakdowns", AdsInsights.ActionBreakdowns.__dict__)
@@ -94,17 +93,19 @@ class ConnectorConfig(BaseConfig):
     class Config:
         title = "Source Facebook Marketing"
 
-    account_id: str = Field(
-        title="Account ID",
+    account_id: str = ""
+
+    account_ids: str = Field(
+        title="Account IDs",
         order=0,
         description=(
-            "The Facebook Ad account ID to use when pulling data from the Facebook Marketing API."
+            "The Facebook Ad account IDs to use when pulling data from the Facebook Marketing API."
             " Open your Meta Ads Manager. The Ad account ID number is in the account dropdown menu or in your browser's address bar. "
             'See the <a href="https://www.facebook.com/business/help/1492627900875762">docs</a> for more information.'
         ),
-        pattern="^[0-9]+$",
-        pattern_descriptor="1234567890",
-        examples=["111111111111111"],
+        pattern="^[\w-]+(,[\w-]+)*$",
+        pattern_descriptor="1234567890,1234567890",
+        examples=["111111111111111,222222222222222"],
     )
 
     start_date: datetime = Field(
